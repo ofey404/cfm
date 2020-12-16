@@ -4,8 +4,8 @@ Development Note
 A good resource: https://www.fuzzingbook.org/
 
 ## Milestone
-- [ ] Single thread code runner
-- [ ] provide input and output.
+- [x] provide input and output.
+- [x] Single thread code runner
 - [ ] fuzzle input
 - [ ] put it together Prove it works fine
 - [ ] Multi thread
