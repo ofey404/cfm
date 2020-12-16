@@ -13,3 +13,4 @@ Cargo.lock
 ## My Own
 tests/
 .idea/
+**/core.*

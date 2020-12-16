@@ -1,7 +1,9 @@
+mod debug;
+
 use clap::Clap;
 use std::process::{Command, Stdio};
 use std::fs::File;
-use std::io::{Read, Write, Error, BufReader, BufWriter, BufRead};
+use std::io::{Read, Write, Error, BufWriter};
 
 #[derive(Clap)]
 #[clap(version = "0.1.0", author = "Weiwen Chen <17307110121@fudan.edu.cn>")]
@@ -63,5 +65,8 @@ fn main() -> Result<(), Error> {
             None => println!("process terminated by signal"),
         }
     }
+
+    debug::run_gdb();
+
     Ok(())
 }

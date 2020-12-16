@@ -6,6 +6,7 @@ A good resource: https://www.fuzzingbook.org/
 ## Milestone
 - [x] provide input and output.
 - [x] Single thread code runner
+- [x] Fault detection.
 - [ ] fuzzle input
 - [ ] put it together Prove it works fine
 - [ ] Multi thread
