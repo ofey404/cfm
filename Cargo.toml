@@ -9,3 +9,5 @@ edition = "2018"
 [dependencies]
 clap = "3.0.0-beta.2"
 gdb = { path = '/home/ofey/CLionProjects/rust-gdb' }
+regex = "1"
+lazy_static = "1.4.0"
