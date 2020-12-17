@@ -1,9 +1,14 @@
 mod debug;
+mod fuzz;
 
 use clap::Clap;
-use std::process::{Command, Stdio};
+use ctrlc;
 use std::fs::File;
-use std::io::{Read, Write, Error, BufWriter};
+use std::io::{BufWriter, Error, Read, Write};
+use std::process::{Command, Stdio};
+use std::thread::sleep;
+use std::{fs, time};
+use crate::fuzz::InputMutator;
 
 #[derive(Clap)]
 #[clap(version = "0.1.0", author = "Weiwen Chen <17307110121@fudan.edu.cn>")]
@@ -17,7 +22,8 @@ struct Opts {
     output: String,
 }
 
-fn main() -> Result<(), Error> {
+// TODO: Sketch, Waiting to be removed
+fn __main() -> Result<(), Error> {
     let opts: Opts = Opts::parse();
 
     // Gets a value for config if supplied by user, or defaults to "default.conf"
@@ -40,9 +46,9 @@ fn main() -> Result<(), Error> {
 
     // Fire a subroutine, pass argument to it.
     let child = Command::new(opts.fuzz_file)
-            .stdin(Stdio::piped())
-            .stdout(Stdio::piped())
-            .spawn()?;
+        .stdin(Stdio::piped())
+        .stdout(Stdio::piped())
+        .spawn()?;
     {
         let mut child_stdin = (&child).stdin.as_ref().unwrap();
         let mut writer = BufWriter::new(&mut child_stdin);
@@ -67,6 +73,39 @@ fn main() -> Result<(), Error> {
     }
 
     debug::run_gdb();
+
+    Ok(())
+}
+
+fn main() -> Result<(), Error> {
+    let opts: Opts = Opts::parse();
+    let i_files = fs::read_dir(opts.input)?;
+    let mut inputs = Vec::new();
+    for i_path in i_files {
+        let mut input = String::new();
+        let mut i_file = File::open(i_path?.path())?;
+        i_file.read_to_string(&mut input)?;
+        inputs.push(input);
+    }
+
+    ctrlc::set_handler(move || {
+        // TODO: Save state and clean up.
+        println!("Ctrl-c is pressed");
+        std::process::exit(0);
+    })
+    .expect("Set ctrl-c handler failed.");
+
+    let mut mutators: Vec<InputMutator> = inputs.into_iter().map(|s| InputMutator::new(&s).unwrap()).collect();
+
+    // Loop all in round robin style.
+    loop {
+        for mutator in mutators.iter_mut() {
+            mutator.mutate();
+            // TODO: Run test in mutated input.
+            // TODO: Collect return status.
+        }
+        sleep(time::Duration::from_secs(1));
+    }
 
     Ok(())
 }
