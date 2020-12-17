@@ -7,7 +7,7 @@ use ctrlc;
 use std::fs::File;
 use std::io;
 use std::io::{BufWriter, Error, Read, Write};
-use std::process::{Command, Stdio};
+use std::process::{Command, Stdio, Output};
 use std::thread::sleep;
 use std::{fs, time};
 
@@ -47,24 +47,36 @@ fn generate_mutators(inputs: &Vec<String>) -> Result<Vec<InputMutator>, Error> {
         .collect())
 }
 
-fn main() -> Result<(), Error> {
-    let opts: Opts = Opts::parse();
-    let mut inputs = get_inputs(&opts.input)?;
+fn run_fuzz(fuzz_file: &str, input: &str) -> Result<Output, Error> {
+    let child = Command::new(&fuzz_file)
+        .stdin(Stdio::piped())
+        .stdout(Stdio::piped())
+        .spawn()?;
+    {
+        let mut child_stdin = (&child).stdin.as_ref().unwrap();
+        let mut writer = BufWriter::new(&mut child_stdin);
+        writer.write_all(input.as_bytes()).unwrap();
+        writer.flush().unwrap();
+    }
+    child.wait_with_output()
+}
 
+fn main() -> Result<(), Error> {
     ctrlc::set_handler(cc_handler).expect("Set ctrl-c handler failed.");
 
+    let opts: Opts = Opts::parse();
+    let mut inputs = get_inputs(&opts.input)?;
     let mut mutators: Vec<InputMutator> = generate_mutators(&inputs)?;
 
     // Loop all in round robin style.
     loop {
         for mutator in mutators.iter_mut() {
             mutator.mutate();
-            // TODO: Run test in mutated input.
-            // TODO: Collect return status.
+            let output = run_fuzz(&opts.fuzz_file, mutator.get_mutation())?;
             // TODO: Analyse.
             // TODO: Update output.
         }
-        sleep(time::Duration::from_secs(1));
+        sleep(time::Duration::from_secs(2));
     }
 
     Ok(())

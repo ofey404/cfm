@@ -17,6 +17,7 @@ enum MutateMethod {
 
 impl InputMutator {
     pub fn new(seed: &str) -> Result<Self, Error> {
+        // TODO: A true random mutator.
         let rng_seed: [u8; 32] = [
             42, 42, 42, 42, 42, 42, 42, 42, 42, 42, 42, 42, 42, 42, 42, 42, 42, 42, 42, 42, 42, 42,
             42, 42, 42, 42, 42, 42, 42, 42, 42, 42,
