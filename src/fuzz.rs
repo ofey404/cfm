@@ -31,11 +31,11 @@ impl InputMutator {
         // FIXIT: I don't know how to randomly choose a method. I tried:
         // let all_mutate_callbacks = [|| self.write_random_utf8(), || self.bit_flip(),];
         // let random_mutate_method = all_mutate_callbacks.choose(&mut self.rng)?;
-        let all_mutate = [
-            MutateMethod::WriteRandomUTF8,
-            MutateMethod::BitFlip,
-        ];
-        match all_mutate.choose(&mut self.rng).expect("Random choose mutate method failed") {
+        let all_mutate = [MutateMethod::WriteRandomUTF8, MutateMethod::BitFlip];
+        match all_mutate
+            .choose(&mut self.rng)
+            .expect("Random choose mutate method failed")
+        {
             MutateMethod::WriteRandomUTF8 => self.write_random_utf8(),
             MutateMethod::BitFlip => self.bit_flip(),
         }
