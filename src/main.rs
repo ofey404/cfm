@@ -5,6 +5,7 @@ use clap::Clap;
 use ctrlc;
 use std::fs::File;
 use std::io::{BufWriter, Error, Read, Write};
+use std::io;
 use std::process::{Command, Stdio};
 use std::thread::sleep;
 use std::{fs, time};
@@ -77,9 +78,8 @@ fn __main() -> Result<(), Error> {
     Ok(())
 }
 
-fn main() -> Result<(), Error> {
-    let opts: Opts = Opts::parse();
-    let i_files = fs::read_dir(opts.input)?;
+fn get_inputs(input_path: &str) -> Result<Vec<String>, Error> {
+    let i_files = fs::read_dir(input_path)?;
     let mut inputs = Vec::new();
     for i_path in i_files {
         let mut input = String::new();
@@ -87,15 +87,27 @@ fn main() -> Result<(), Error> {
         i_file.read_to_string(&mut input)?;
         inputs.push(input);
     }
+    Ok(inputs)
+}
 
-    ctrlc::set_handler(move || {
-        // TODO: Save state and clean up.
-        println!("Ctrl-c is pressed");
-        std::process::exit(0);
-    })
+fn cc_handler() {
+    println!("Ctrl-c is pressed");
+    std::process::exit(0);
+}
+
+fn generate_mutators(inputs: &Vec<String>) -> Result<Vec<InputMutator>, Error> {
+    Ok(inputs.into_iter().map(|s| InputMutator::new(&s).expect("InputMutator initialization failed!")).collect())
+}
+
+
+fn main() -> Result<(), Error> {
+    let opts: Opts = Opts::parse();
+    let mut inputs = get_inputs(&opts.input)?;
+
+    ctrlc::set_handler(cc_handler)
     .expect("Set ctrl-c handler failed.");
 
-    let mut mutators: Vec<InputMutator> = inputs.into_iter().map(|s| InputMutator::new(&s).unwrap()).collect();
+    let mut mutators: Vec<InputMutator> = generate_mutators(&inputs)?;
 
     // Loop all in round robin style.
     loop {
@@ -103,6 +115,8 @@ fn main() -> Result<(), Error> {
             mutator.mutate();
             // TODO: Run test in mutated input.
             // TODO: Collect return status.
+            // TODO: Analyse.
+            // TODO: Update output.
         }
         sleep(time::Duration::from_secs(1));
     }
