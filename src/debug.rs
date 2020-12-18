@@ -71,34 +71,3 @@ pub fn get_exec_path(flaw_file_path: &str, dump_file_path: &str) -> String {
     exec_path_to_string(&exec_locations)
 }
 
-pub fn run_gdb() {
-    // // Run GDB with command
-    // let mut debugger = gdb::Debugger::start().unwrap();
-    // let response = debugger.send_cmd_raw("file ./tests/hello/flaw\n").unwrap();
-    // println!("{:?}", response);
-    // let response = debugger
-    //     .send_cmd_raw("core ./tests/hello/core.26772\n")
-    //     .unwrap();
-    // println!("{:?}", response);
-    // let response = debugger.send_cmd_raw_full_record("bt\n").unwrap();
-    // println!("{:?}", &response);
-    //
-    // let mut exec_locations = Vec::new();
-    //
-    // for record in &response {
-    //     let location = match &record {
-    //         Stream(s) => match s {
-    //             Console(c) => exec_locations.push(ExecLocation::from_stream_record(c).unwrap()),
-    //             _ => continue,
-    //         }
-    //         _ => continue,
-    //     };
-    // }
-    // println!("{}", exec_path_to_string(&exec_locations));
-    // println!("Over");
-
-    println!(
-        "{}",
-        get_exec_path("./tests/hello/flaw", "tests/hello/core.26772")
-    );
-}
