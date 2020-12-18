@@ -5,14 +5,12 @@ use crate::fuzz::InputMutator;
 use chrono::{DateTime, Utc};
 use clap::Clap;
 use ctrlc;
+use std::collections::HashSet;
 use std::fs::File;
-use std::io;
 use std::io::{BufWriter, Error, Read, Write};
-use std::process::{exit, Command, ExitStatus, Output, Stdio};
+use std::process::{Command, ExitStatus, Output, Stdio};
 use std::thread::sleep;
 use std::{fs, time};
-use std::collections::HashSet;
-use std::path::Path;
 
 #[derive(Clap)]
 #[clap(version = "0.1.0", author = "Weiwen Chen <17307110121@fudan.edu.cn>")]
@@ -44,10 +42,7 @@ fn cc_handler() {
 }
 
 fn generate_mutators(inputs: &Vec<String>) -> Result<Vec<InputMutator>, Error> {
-    Ok(inputs
-        .into_iter()
-        .map(|s| InputMutator::new(&s).expect("InputMutator initialization failed!"))
-        .collect())
+    Ok(inputs.into_iter().map(|s| InputMutator::new(&s)).collect())
 }
 
 fn run_fuzz(fuzz_file: &str, input: &str) -> Result<Output, Error> {
@@ -72,9 +67,9 @@ fn write_output_files(output_file_path: &str, input: &str, exec_path: &str) -> R
     let now: DateTime<Utc> = Utc::now();
     let time_prefix = now.format("%Y-%m-%d-%H:%M:%S").to_string();
     let mut input_file = File::create(format!("{}/{}.input", output_file_path, time_prefix))?;
-    input_file.write_all(input.as_bytes());
+    input_file.write_all(input.as_bytes())?;
     let mut exec_file = File::create(format!("{}/{}.exec", output_file_path, time_prefix))?;
-    exec_file.write_all(exec_path.as_bytes());
+    exec_file.write_all(exec_path.as_bytes())?;
     Ok(())
 }
 
@@ -82,7 +77,7 @@ fn main() -> Result<(), Error> {
     ctrlc::set_handler(cc_handler).expect("Set ctrl-c handler failed.");
 
     let opts: Opts = Opts::parse();
-    let mut inputs = get_inputs(&opts.input)?;
+    let inputs = get_inputs(&opts.input)?;
     let mut mutators: Vec<InputMutator> = generate_mutators(&inputs)?;
 
     let mut discovered_error_path: HashSet<String> = HashSet::new();
@@ -105,6 +100,4 @@ fn main() -> Result<(), Error> {
         }
         sleep(time::Duration::from_secs(2));
     }
-
-    Ok(())
 }
