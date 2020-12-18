@@ -60,6 +60,26 @@ fn run_fuzz(fuzz_file: &str, input: &str) -> Result<Output, Error> {
     child.wait_with_output()
 }
 
+fn run_fuzz_with_tmp_file(fuzz_file: &str, input: &str) -> Result<Output, Error> {
+    let mut tmp = File::create("./tmp_file")?;
+    tmp.write_all(input.as_bytes())?;
+
+    let child = Command::new(&fuzz_file)
+        .stdin(Stdio::piped())
+        .arg("./tmp_file")
+        .stdout(Stdio::piped())
+        .spawn()?;
+    {
+        let mut child_stdin = (&child).stdin.as_ref().unwrap();
+        let mut writer = BufWriter::new(&mut child_stdin);
+        writer.write_all(input.as_bytes()).unwrap();
+        writer.flush().unwrap();
+    }
+    let output = child.wait_with_output();
+    fs::remove_file("./tmp_file")?;
+    output
+}
+
 fn exit_with_sigsegv(ecode: ExitStatus) -> bool {
     !(ecode.success() || !ecode.code().is_none())
 }
@@ -92,7 +112,7 @@ fn main() -> Result<(), Error> {
     loop {
         for mutator in mutators.iter_mut() {
             mutator.mutate();
-            let output = run_fuzz(&opts.fuzz_file, mutator.get_mutation())?;
+            let output = run_fuzz_with_tmp_file(&opts.fuzz_file, mutator.get_mutation())?;
             let ecode = output.status;
             if !exit_with_sigsegv(ecode) {
                 continue;
