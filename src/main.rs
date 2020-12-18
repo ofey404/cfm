@@ -2,6 +2,7 @@ mod debug;
 mod fuzz;
 
 use crate::fuzz::InputMutator;
+use chrono::{DateTime, Utc};
 use clap::Clap;
 use ctrlc;
 use std::fs::File;
@@ -10,6 +11,8 @@ use std::io::{BufWriter, Error, Read, Write};
 use std::process::{exit, Command, ExitStatus, Output, Stdio};
 use std::thread::sleep;
 use std::{fs, time};
+use std::collections::HashSet;
+use std::path::Path;
 
 #[derive(Clap)]
 #[clap(version = "0.1.0", author = "Weiwen Chen <17307110121@fudan.edu.cn>")]
@@ -65,12 +68,24 @@ fn exit_with_sigsegv(ecode: ExitStatus) -> bool {
     !(ecode.success() || !ecode.code().is_none())
 }
 
+fn write_output_files(output_file_path: &str, input: &str, exec_path: &str) -> Result<(), Error> {
+    let now: DateTime<Utc> = Utc::now();
+    let time_prefix = now.format("%Y-%m-%d-%H:%M:%S").to_string();
+    let mut input_file = File::create(format!("{}/{}.input", output_file_path, time_prefix))?;
+    input_file.write_all(input.as_bytes());
+    let mut exec_file = File::create(format!("{}/{}.exec", output_file_path, time_prefix))?;
+    exec_file.write_all(exec_path.as_bytes());
+    Ok(())
+}
+
 fn main() -> Result<(), Error> {
     ctrlc::set_handler(cc_handler).expect("Set ctrl-c handler failed.");
 
     let opts: Opts = Opts::parse();
-     mut inputs = get_inputs(&opts.input)?;
+    let mut inputs = get_inputs(&opts.input)?;
     let mut mutators: Vec<InputMutator> = generate_mutators(&inputs)?;
+
+    let mut discovered_error_path: HashSet<String> = HashSet::new();
 
     // Loop all in round robin style.
     loop {
@@ -81,10 +96,12 @@ fn main() -> Result<(), Error> {
             if !exit_with_sigsegv(ecode) {
                 continue;
             }
-            let mut exec_path = String::new();
-            exec_path = debug::get_exec_path(&opts.fuzz_file, &debug::get_first_core_name());
-            println!("{}", exec_path);
-            // TODO: Update output.
+            let core_path = debug::get_first_core_name().expect("No core file in current dir");
+            let exec_path = debug::get_exec_path(&opts.fuzz_file, &core_path);
+            fs::remove_file(core_path).expect("No core file to remove!");
+            if exec_path == "" || discovered_error_path.insert(exec_path.clone()) {
+                write_output_files(&opts.output, mutator.get_mutation(), &exec_path)?;
+            }
         }
         sleep(time::Duration::from_secs(2));
     }
