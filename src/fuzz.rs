@@ -13,7 +13,7 @@ enum MutateMethod {
 }
 
 fn generate_random_utf8(rng: &mut StdRng) -> char {
-    rng.gen::<char>()
+    rng.gen::<u8>() as char
 }
 
 impl InputMutator {
@@ -125,5 +125,14 @@ mod tests {
         println!("{:?}", im);
         im.mutate();
         println!("{:?}", im);
+    }
+
+    #[test]
+    fn show_generate_u8() {
+        let mut im = InputMutator::new("hello mutator!\n");
+        for _ in 0..100 {
+            print!("{}", generate_random_utf8(&mut im.rng));
+        }
+        print!("\n");
     }
 }

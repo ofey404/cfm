@@ -7,7 +7,7 @@ use clap::Clap;
 use ctrlc;
 use std::collections::HashSet;
 use std::fs::File;
-use std::io::{BufWriter, Error, Read, Write};
+use std::io::{BufWriter, Error, Read, Write, stdout};
 use std::process::{Command, ExitStatus, Output, Stdio};
 use std::thread::sleep;
 use std::{fs, time};
@@ -37,6 +37,7 @@ fn get_inputs(input_path: &str) -> Result<Vec<String>, Error> {
 }
 
 fn cc_handler() {
+    print!("\n");
     println!("Ctrl-c is pressed");
     std::process::exit(0);
 }
@@ -66,9 +67,13 @@ fn exit_with_sigsegv(ecode: ExitStatus) -> bool {
 fn write_output_files(output_file_path: &str, input: &str, exec_path: &str) -> Result<(), Error> {
     let now: DateTime<Utc> = Utc::now();
     let time_prefix = now.format("%Y-%m-%d-%H:%M:%S").to_string();
-    let mut input_file = File::create(format!("{}/{}.input", output_file_path, time_prefix))?;
+
+    let i = format!("{}/{}.input", output_file_path, time_prefix);
+    let mut input_file = File::create(&i)?;
     input_file.write_all(input.as_bytes())?;
-    let mut exec_file = File::create(format!("{}/{}.exec", output_file_path, time_prefix))?;
+
+    let e = format!("{}/{}.exec", output_file_path, time_prefix);
+    let mut exec_file = File::create(&e)?;
     exec_file.write_all(exec_path.as_bytes())?;
     Ok(())
 }
@@ -83,6 +88,7 @@ fn main() -> Result<(), Error> {
     let mut discovered_error_path: HashSet<String> = HashSet::new();
 
     // Loop all in round robin style.
+    let mut unclassified_fault_count = 0;
     loop {
         for mutator in mutators.iter_mut() {
             mutator.mutate();
@@ -96,6 +102,12 @@ fn main() -> Result<(), Error> {
             fs::remove_file(core_path).expect("No core file to remove!");
             if exec_path == "" || discovered_error_path.insert(exec_path.clone()) {
                 write_output_files(&opts.output, mutator.get_mutation(), &exec_path)?;
+                if exec_path == "" {
+                    unclassified_fault_count += 1;
+                }
+                let unique_fault_count = discovered_error_path.len();
+                print!("\rfault count: {}; unique: {}; unclassified: {}", unique_fault_count + unclassified_fault_count, unique_fault_count, unclassified_fault_count);
+                stdout().flush().unwrap();
             }
         }
         sleep(time::Duration::from_secs(2));
