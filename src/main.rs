@@ -7,11 +7,10 @@ use clap::Clap;
 use ctrlc;
 use std::collections::HashSet;
 use std::fs::File;
-use std::io::{BufWriter, Error, Read, Write, stdout};
-use std::process::{Command, ExitStatus, Output, Stdio};
-use std::thread::sleep;
-use std::{fs, time, io};
+use std::io::{stdout, BufWriter, Error, Read, Write};
 use std::path::PathBuf;
+use std::process::{Command, ExitStatus, Output, Stdio};
+use std::{fs, io};
 
 #[derive(Clap)]
 #[clap(version = "0.1.0", author = "Weiwen Chen <17307110121@fudan.edu.cn>")]
@@ -44,20 +43,6 @@ fn cc_handler() {
 
 fn generate_mutators(inputs: &Vec<Vec<u8>>) -> Result<Vec<InputMutator>, Error> {
     Ok(inputs.into_iter().map(|s| InputMutator::new(&s)).collect())
-}
-
-fn run_fuzz(fuzz_file: &str, input: &str) -> Result<Output, Error> {
-    let child = Command::new(&fuzz_file)
-        .stdin(Stdio::piped())
-        .stdout(Stdio::piped())
-        .spawn()?;
-    {
-        let mut child_stdin = (&child).stdin.as_ref().unwrap();
-        let mut writer = BufWriter::new(&mut child_stdin);
-        writer.write_all(input.as_bytes()).unwrap();
-        writer.flush().unwrap();
-    }
-    child.wait_with_output()
 }
 
 fn run_fuzz_with_tmp_file(fuzz_file: &str, input: &[u8]) -> Result<Output, Error> {
@@ -107,7 +92,7 @@ fn read_file_to_bytes(path: &PathBuf, destination: &mut Vec<u8>) -> io::Result<(
         if n == 0 {
             break;
         }
-        destination.extend(& buffer[..n]);
+        destination.extend(&buffer[..n]);
     }
     Ok(())
 }
@@ -130,7 +115,13 @@ fn main() -> Result<(), Error> {
             mutator.mutate();
             let output = run_fuzz_with_tmp_file(&opts.fuzz_file, mutator.get_mutation())?;
             let ecode = output.status;
-            print!("\rtest {} times; fault count: {}; unique: {}; unclassified: {}", run, unique_fault_count + unclassified_fault_count, unique_fault_count, unclassified_fault_count);
+            print!(
+                "\rtest {} times; fault count: {}; unique: {}; unclassified: {}",
+                run,
+                unique_fault_count + unclassified_fault_count,
+                unique_fault_count,
+                unclassified_fault_count
+            );
             stdout().flush().unwrap();
             run += 1;
             if !exit_with_sigsegv(ecode) {
@@ -147,6 +138,5 @@ fn main() -> Result<(), Error> {
                 unique_fault_count = discovered_error_path.len();
             }
         }
-        sleep(time::Duration::from_secs(2));
     }
 }

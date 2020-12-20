@@ -76,9 +76,6 @@ pub fn get_exec_path(flaw_file_path: &str, dump_file_path: &str) -> String {
         .unwrap();
 
     let func_names = parse_func_name(&func_info);
-
-    // println!("{:?}", func_names);
-
     let core_cmd = &format!("core {}\n", dump_file_path);
     debugger.send_cmd_raw(core_cmd).unwrap();
     let response = debugger.send_cmd_raw_full_record("bt\n").unwrap();

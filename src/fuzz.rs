@@ -1,9 +1,14 @@
+use crate::fuzz::Error::MutationZeroLength;
 use rand::prelude::*;
 
 #[derive(Debug)]
 pub struct InputMutator {
     mutation: Vec<u8>,
     rng: StdRng,
+}
+
+enum Error {
+    MutationZeroLength,
 }
 
 enum MutateMethod {
@@ -49,29 +54,36 @@ impl InputMutator {
     }
 
     fn change_random_utf8(&mut self) {
-        if self.mutation.len() == 0 {
-            return;
-        }
-        let i = self.random_index();
+        let i = match self.random_index() {
+            Ok(index) => index,
+            Err(MutationZeroLength) => return,
+        };
         self.mutation.remove(i);
         self.mutation.insert(i, generate_random_u8(&mut self.rng));
     }
 
     fn ins_random_utf8(&mut self) {
-        let i = self.random_index();
+        let i = match self.random_index() {
+            Ok(index) => index,
+            Err(MutationZeroLength) => 0,
+        };
         self.mutation.insert(i, generate_random_u8(&mut self.rng));
     }
 
     fn del_random_utf8(&mut self) {
-        if self.mutation.len() == 0 {
-            return;
-        }
-        let i = self.random_index();
+        let i = match self.random_index() {
+            Ok(index) => index,
+            Err(MutationZeroLength) => return,
+        };
         self.mutation.remove(i);
     }
 
-    fn random_index(&mut self) -> usize {
-        self.rng.gen_range(0, self.mutation.len())
+    fn random_index(&mut self) -> Result<usize, Error> {
+        if self.mutation.len() == 0 {
+            return Err(MutationZeroLength);
+        }
+        let len = self.mutation.len();
+        Ok(self.rng.gen_range(0, self.mutation.len()))
     }
 
     pub fn get_mutation(&self) -> &Vec<u8> {
