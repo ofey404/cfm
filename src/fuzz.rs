@@ -78,6 +78,17 @@ impl InputMutator {
         self.mutation.remove(i);
     }
 
+    fn bit_flip(&mut self) {
+        let i = match self.random_index() {
+            Ok(index) => index,
+            Err(MutationZeroLength) => return,
+        };
+        let mut target_byte = self.mutation[i];
+        let offset = self.rng.gen_range(0, 8);
+        let mask: u8 = 1 << offset;
+        self.mutation[i] = (target_byte & !mask) | (!target_byte & mask);
+    }
+
     fn random_index(&mut self) -> Result<usize, Error> {
         if self.mutation.len() == 0 {
             return Err(MutationZeroLength);
