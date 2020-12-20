@@ -2,7 +2,7 @@ use rand::prelude::*;
 
 #[derive(Debug)]
 pub struct InputMutator {
-    mutation: String,
+    mutation: Vec<u8>,
     rng: StdRng,
 }
 
@@ -12,19 +12,19 @@ enum MutateMethod {
     DeleteRandomUTF8,
 }
 
-fn generate_random_utf8(rng: &mut StdRng) -> char {
-    rng.gen::<u8>() as char
+fn generate_random_u8(rng: &mut StdRng) -> u8 {
+    rng.gen::<u8>()
 }
 
 impl InputMutator {
-    pub fn new(seed: &str) -> Self {
+    pub fn new(seed: &[u8]) -> Self {
         // TODO: A true random mutator.
         let rng_seed: [u8; 32] = [
             42, 42, 42, 42, 42, 42, 42, 42, 42, 42, 42, 42, 42, 42, 42, 42, 42, 42, 42, 42, 42, 42,
             42, 42, 42, 42, 42, 42, 42, 42, 42, 42,
         ]; // byte array
         InputMutator {
-            mutation: seed.to_string(),
+            mutation: seed.to_vec(),
             rng: StdRng::from_seed(rng_seed),
         }
     }
@@ -54,12 +54,12 @@ impl InputMutator {
         }
         let i = self.random_index();
         self.mutation.remove(i);
-        self.mutation.insert(i, generate_random_utf8(&mut self.rng));
+        self.mutation.insert(i, generate_random_u8(&mut self.rng));
     }
 
     fn ins_random_utf8(&mut self) {
         let i = self.random_index();
-        self.mutation.insert(i, generate_random_utf8(&mut self.rng));
+        self.mutation.insert(i, generate_random_u8(&mut self.rng));
     }
 
     fn del_random_utf8(&mut self) {
@@ -74,7 +74,7 @@ impl InputMutator {
         self.rng.gen_range(0, self.mutation.len())
     }
 
-    pub fn get_mutation(&self) -> &String {
+    pub fn get_mutation(&self) -> &Vec<u8> {
         &self.mutation
     }
 }
@@ -91,34 +91,54 @@ mod tests {
 
     #[test]
     fn show_input_mutator_initialization() {
-        let im = InputMutator::new("hello mutator!\n");
+        let seed: [u8; 32] = [
+            42, 42, 42, 42, 42, 42, 42, 42, 42, 42, 42, 42, 42, 42, 42, 42, 42, 42, 42, 42, 42, 42,
+            42, 42, 42, 42, 42, 42, 42, 42, 42, 42,
+        ];
+        let im = InputMutator::new(&seed);
         println!("{:?}", im);
     }
 
     #[test]
     fn show_change_random_utf8() {
-        let mut im = InputMutator::new("hello mutator!\n");
+        let seed: [u8; 32] = [
+            42, 42, 42, 42, 42, 42, 42, 42, 42, 42, 42, 42, 42, 42, 42, 42, 42, 42, 42, 42, 42, 42,
+            42, 42, 42, 42, 42, 42, 42, 42, 42, 42,
+        ];
+        let mut im = InputMutator::new(&seed);
         im.change_random_utf8();
         println!("{:?}", im);
     }
 
     #[test]
     fn show_ins_random_utf8() {
-        let mut im = InputMutator::new("hello mutator!\n");
+        let seed: [u8; 32] = [
+            42, 42, 42, 42, 42, 42, 42, 42, 42, 42, 42, 42, 42, 42, 42, 42, 42, 42, 42, 42, 42, 42,
+            42, 42, 42, 42, 42, 42, 42, 42, 42, 42,
+        ];
+        let mut im = InputMutator::new(&seed);
         im.ins_random_utf8();
         println!("{:?}", im);
     }
 
     #[test]
     fn show_del_random_utf8() {
-        let mut im = InputMutator::new("hello mutator!\n");
+        let seed: [u8; 32] = [
+            42, 42, 42, 42, 42, 42, 42, 42, 42, 42, 42, 42, 42, 42, 42, 42, 42, 42, 42, 42, 42, 42,
+            42, 42, 42, 42, 42, 42, 42, 42, 42, 42,
+        ];
+        let mut im = InputMutator::new(&seed);
         im.del_random_utf8();
         println!("{:?}", im);
     }
 
     #[test]
     fn show_mutate() {
-        let mut im = InputMutator::new("hello mutator!\n");
+        let seed: [u8; 32] = [
+            42, 42, 42, 42, 42, 42, 42, 42, 42, 42, 42, 42, 42, 42, 42, 42, 42, 42, 42, 42, 42, 42,
+            42, 42, 42, 42, 42, 42, 42, 42, 42, 42,
+        ];
+        let mut im = InputMutator::new(&seed);
         im.mutate();
         println!("{:?}", im);
         im.mutate();
@@ -129,9 +149,13 @@ mod tests {
 
     #[test]
     fn show_generate_u8() {
-        let mut im = InputMutator::new("hello mutator!\n");
+        let seed: [u8; 32] = [
+            42, 42, 42, 42, 42, 42, 42, 42, 42, 42, 42, 42, 42, 42, 42, 42, 42, 42, 42, 42, 42, 42,
+            42, 42, 42, 42, 42, 42, 42, 42, 42, 42,
+        ];
+        let mut im = InputMutator::new(&seed);
         for _ in 0..100 {
-            print!("{}", generate_random_utf8(&mut im.rng));
+            print!("{}", generate_random_u8(&mut im.rng));
         }
         print!("\n");
     }

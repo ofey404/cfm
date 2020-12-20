@@ -10,7 +10,8 @@ use std::fs::File;
 use std::io::{BufWriter, Error, Read, Write, stdout};
 use std::process::{Command, ExitStatus, Output, Stdio};
 use std::thread::sleep;
-use std::{fs, time};
+use std::{fs, time, io};
+use std::path::PathBuf;
 
 #[derive(Clap)]
 #[clap(version = "0.1.0", author = "Weiwen Chen <17307110121@fudan.edu.cn>")]
@@ -24,13 +25,12 @@ struct Opts {
     output: String,
 }
 
-fn get_inputs(input_path: &str) -> Result<Vec<String>, Error> {
+fn get_inputs(input_path: &str) -> Result<Vec<Vec<u8>>, Error> {
     let i_files = fs::read_dir(input_path)?;
     let mut inputs = Vec::new();
     for i_path in i_files {
-        let mut input = String::new();
-        let mut i_file = File::open(i_path?.path())?;
-        i_file.read_to_string(&mut input)?;
+        let mut input = Vec::new();
+        read_file_to_bytes(&i_path?.path(), &mut input)?;
         inputs.push(input);
     }
     Ok(inputs)
@@ -42,7 +42,7 @@ fn cc_handler() {
     std::process::exit(0);
 }
 
-fn generate_mutators(inputs: &Vec<String>) -> Result<Vec<InputMutator>, Error> {
+fn generate_mutators(inputs: &Vec<Vec<u8>>) -> Result<Vec<InputMutator>, Error> {
     Ok(inputs.into_iter().map(|s| InputMutator::new(&s)).collect())
 }
 
@@ -60,9 +60,9 @@ fn run_fuzz(fuzz_file: &str, input: &str) -> Result<Output, Error> {
     child.wait_with_output()
 }
 
-fn run_fuzz_with_tmp_file(fuzz_file: &str, input: &str) -> Result<Output, Error> {
+fn run_fuzz_with_tmp_file(fuzz_file: &str, input: &[u8]) -> Result<Output, Error> {
     let mut tmp = File::create("./tmp_file")?;
-    tmp.write_all(input.as_bytes())?;
+    tmp.write_all(input)?;
 
     let child = Command::new(&fuzz_file)
         .stdin(Stdio::piped())
@@ -72,7 +72,7 @@ fn run_fuzz_with_tmp_file(fuzz_file: &str, input: &str) -> Result<Output, Error>
     {
         let mut child_stdin = (&child).stdin.as_ref().unwrap();
         let mut writer = BufWriter::new(&mut child_stdin);
-        writer.write_all(input.as_bytes()).unwrap();
+        writer.write_all(input).unwrap();
         writer.flush().unwrap();
     }
     let output = child.wait_with_output();
@@ -84,17 +84,31 @@ fn exit_with_sigsegv(ecode: ExitStatus) -> bool {
     !(ecode.success() || !ecode.code().is_none())
 }
 
-fn write_output_files(output_file_path: &str, input: &str, exec_path: &str) -> Result<(), Error> {
+fn write_output_files(output_file_path: &str, input: &[u8], exec_path: &str) -> Result<(), Error> {
     let now: DateTime<Utc> = Utc::now();
     let time_prefix = now.format("%Y-%m-%d-%H:%M:%S").to_string();
 
     let i = format!("{}/{}.input", output_file_path, time_prefix);
     let mut input_file = File::create(&i)?;
-    input_file.write_all(input.as_bytes())?;
+    input_file.write_all(input)?;
 
     let e = format!("{}/{}.exec", output_file_path, time_prefix);
     let mut exec_file = File::create(&e)?;
     exec_file.write_all(exec_path.as_bytes())?;
+    Ok(())
+}
+
+fn read_file_to_bytes(path: &PathBuf, destination: &mut Vec<u8>) -> io::Result<()> {
+    let mut f = File::open(path)?;
+    let mut buffer = [0; 10];
+
+    loop {
+        let n = f.read(&mut buffer[..])?;
+        if n == 0 {
+            break;
+        }
+        destination.extend(& buffer[..n]);
+    }
     Ok(())
 }
 
@@ -109,11 +123,16 @@ fn main() -> Result<(), Error> {
 
     // Loop all in round robin style.
     let mut unclassified_fault_count = 0;
+    let mut run = 0;
+    let mut unique_fault_count = 0;
     loop {
         for mutator in mutators.iter_mut() {
             mutator.mutate();
             let output = run_fuzz_with_tmp_file(&opts.fuzz_file, mutator.get_mutation())?;
             let ecode = output.status;
+            print!("\rtest {} times; fault count: {}; unique: {}; unclassified: {}", run, unique_fault_count + unclassified_fault_count, unique_fault_count, unclassified_fault_count);
+            stdout().flush().unwrap();
+            run += 1;
             if !exit_with_sigsegv(ecode) {
                 continue;
             }
@@ -125,9 +144,7 @@ fn main() -> Result<(), Error> {
                 if exec_path == "" {
                     unclassified_fault_count += 1;
                 }
-                let unique_fault_count = discovered_error_path.len();
-                print!("\rfault count: {}; unique: {}; unclassified: {}", unique_fault_count + unclassified_fault_count, unique_fault_count, unclassified_fault_count);
-                stdout().flush().unwrap();
+                unique_fault_count = discovered_error_path.len();
             }
         }
         sleep(time::Duration::from_secs(2));
