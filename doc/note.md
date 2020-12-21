@@ -7,9 +7,9 @@ A good resource: https://www.fuzzingbook.org/
 - [x] provide input and output.
 - [x] Single thread code runner
 - [x] Fault detection.
-- [ ] fuzzle input
-- [ ] put it together Prove it works fine
-- [ ] Multi thread
+- [x] fuzzle input
+- [x] put it together Prove it works fine
+- [x] Multi thread
 
 ## What should the interface look like?
 

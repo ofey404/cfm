@@ -9,7 +9,7 @@ use std::fs;
 
 lazy_static! {
     static ref RE_EXECUTE_LOCATION: Regex =
-        Regex::new(r"^.+?(0x[a-z0-9]{16}) in (.+?) .+$").unwrap();
+        Regex::new(r"^.+?(0x[a-z0-9]{16}) in (.+?) \(\).+?$").unwrap();
     static ref RE_CORE_NAME: Regex = Regex::new(r"^.+?core.[0-9]+?").unwrap();
     static ref RE_FUNCTION_NAME: Regex =
         Regex::new("\"(0x[0-9a-z]{16})  (.+?)(?:@.+?)?\\\\n\"").unwrap();
@@ -29,6 +29,7 @@ pub enum Error {
 impl ExecLocation {
     fn from_stream_record(s: &String) -> Result<ExecLocation, Error> {
         if !RE_EXECUTE_LOCATION.is_match(s.as_str()) {
+            println!("{}", s.as_str());
             return Err(ParseError);
         }
         let caps = RE_EXECUTE_LOCATION.captures(s.as_str()).unwrap();
