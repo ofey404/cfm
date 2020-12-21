@@ -48,7 +48,7 @@ fn exec_path_to_string(exec_locations: &Vec<ExecLocation>, func_names: &Vec<Stri
                 .iter()
                 .any(|name| name.to_string() == location.function)
         {
-            let s = &format!("{} {}\n", location.address, location.function);
+            let s = &format!("{}\n", location.function);
             ans.push_str(s);
         }
     }

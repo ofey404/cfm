@@ -12,9 +12,12 @@ enum Error {
 }
 
 enum MutateMethod {
-    ChangeRandomUTF8,
-    InsertRandomUTF8,
-    DeleteRandomUTF8,
+    ChangeRandomU8,
+    InsertRandomU8,
+    DeleteRandomU8,
+    BitFlip,
+    IncOne,
+    DecOne,
 }
 
 fn generate_random_u8(rng: &mut StdRng) -> u8 {
@@ -39,21 +42,27 @@ impl InputMutator {
         // let all_mutate_callbacks = [|| self.write_random_utf8(), || self.bit_flip(),];
         // let random_mutate_method = all_mutate_callbacks.choose(&mut self.rng)?;
         let all_mutate = [
-            MutateMethod::ChangeRandomUTF8,
-            MutateMethod::InsertRandomUTF8,
-            MutateMethod::DeleteRandomUTF8,
+            MutateMethod::ChangeRandomU8,
+            MutateMethod::InsertRandomU8,
+            MutateMethod::DeleteRandomU8,
+            MutateMethod::BitFlip,
+            MutateMethod::IncOne,
+            MutateMethod::DecOne,
         ];
         match all_mutate
             .choose(&mut self.rng)
             .expect("Random choose mutate method failed")
         {
-            MutateMethod::ChangeRandomUTF8 => self.change_random_utf8(),
-            MutateMethod::InsertRandomUTF8 => self.ins_random_utf8(),
-            MutateMethod::DeleteRandomUTF8 => self.del_random_utf8(),
+            MutateMethod::ChangeRandomU8 => self.change_random_u8(),
+            MutateMethod::InsertRandomU8 => self.ins_random_u8(),
+            MutateMethod::DeleteRandomU8 => self.del_random_u8(),
+            MutateMethod::BitFlip => self.bit_flip(),
+            MutateMethod::IncOne => self.inc_one(),
+            MutateMethod::DecOne => self.dec_one(),
         }
     }
 
-    fn change_random_utf8(&mut self) {
+    fn change_random_u8(&mut self) {
         let i = match self.random_index() {
             Ok(index) => index,
             Err(MutationZeroLength) => return,
@@ -62,7 +71,7 @@ impl InputMutator {
         self.mutation.insert(i, generate_random_u8(&mut self.rng));
     }
 
-    fn ins_random_utf8(&mut self) {
+    fn ins_random_u8(&mut self) {
         let i = match self.random_index() {
             Ok(index) => index,
             Err(MutationZeroLength) => 0,
@@ -70,7 +79,7 @@ impl InputMutator {
         self.mutation.insert(i, generate_random_u8(&mut self.rng));
     }
 
-    fn del_random_utf8(&mut self) {
+    fn del_random_u8(&mut self) {
         let i = match self.random_index() {
             Ok(index) => index,
             Err(MutationZeroLength) => return,
@@ -83,17 +92,38 @@ impl InputMutator {
             Ok(index) => index,
             Err(MutationZeroLength) => return,
         };
-        let mut target_byte = self.mutation[i];
+        let target_byte = self.mutation[i];
         let offset = self.rng.gen_range(0, 8);
         let mask: u8 = 1 << offset;
         self.mutation[i] = (target_byte & !mask) | (!target_byte & mask);
+    }
+
+    fn inc_one(&mut self) {
+        let i = match self.random_index() {
+            Ok(index) => index,
+            Err(MutationZeroLength) => return,
+        };
+        self.mutation[i] = match self.mutation[i] {
+            0b1111_1111 => 0,
+            _ => self.mutation[i] + 1,
+        };
+    }
+
+    fn dec_one(&mut self) {
+        let i = match self.random_index() {
+            Ok(index) => index,
+            Err(MutationZeroLength) => return,
+        };
+        self.mutation[i] = match self.mutation[i] {
+            0 => 0b1111_1111,
+            _ => self.mutation[i] - 1,
+        };
     }
 
     fn random_index(&mut self) -> Result<usize, Error> {
         if self.mutation.len() == 0 {
             return Err(MutationZeroLength);
         }
-        let len = self.mutation.len();
         Ok(self.rng.gen_range(0, self.mutation.len()))
     }
 
@@ -129,7 +159,7 @@ mod tests {
             42, 42, 42, 42, 42, 42, 42, 42, 42, 42,
         ];
         let mut im = InputMutator::new(&seed);
-        im.change_random_utf8();
+        im.change_random_u8();
         println!("{:?}", im);
     }
 
@@ -140,7 +170,7 @@ mod tests {
             42, 42, 42, 42, 42, 42, 42, 42, 42, 42,
         ];
         let mut im = InputMutator::new(&seed);
-        im.ins_random_utf8();
+        im.ins_random_u8();
         println!("{:?}", im);
     }
 
@@ -151,7 +181,7 @@ mod tests {
             42, 42, 42, 42, 42, 42, 42, 42, 42, 42,
         ];
         let mut im = InputMutator::new(&seed);
-        im.del_random_utf8();
+        im.del_random_u8();
         println!("{:?}", im);
     }
 

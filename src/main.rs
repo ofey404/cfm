@@ -57,8 +57,7 @@ fn run_fuzz_with_tmp_file(fuzz_file: &str, input: &[u8]) -> Result<Output, Error
     {
         let mut child_stdin = (&child).stdin.as_ref().unwrap();
         let mut writer = BufWriter::new(&mut child_stdin);
-        writer.write_all(input).unwrap();
-        writer.flush().unwrap();
+        writer.write_all(input).expect("Write tmp file failure");
     }
     let output = child.wait_with_output();
     fs::remove_file("./tmp_file")?;
